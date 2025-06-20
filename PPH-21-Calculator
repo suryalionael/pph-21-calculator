@@ -1,0 +1,1396 @@
+#PALING BARU
+#FINAL REVISED - COMPLETE VERSION - PPh TAHUNAN & TER BULANAN - REVISI INPUT + LAPORAN PERUSAHAAN
+import pandas as pd
+import os
+import json
+import csv
+import math
+from datetime import datetime
+from tabulate import tabulate
+
+# File paths
+DATA_DIR = "data"
+KARYAWAN_FILE = os.path.join(DATA_DIR, "karyawan.json")
+PERHITUNGAN_FILE = os.path.join(DATA_DIR, "perhitungan.json")
+PERUSAHAAN_FILE = os.path.join(DATA_DIR, "perusahaan.json")
+
+# Ensure data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Nama bulan untuk tampilan
+NAMA_BULAN = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "Mei", 6: "Jun", 7: "Jul", 8: "Agt",
+    9: "Sep", 10: "Okt", 11: "Nov", 12: "Des"
+}
+
+NAMA_BULAN_LENGKAP = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+}
+
+# Tarif TER berdasarkan kategori
+def get_ter_rate(category):
+    if category == 'A':
+        return [
+            (0, 5400000, 0.0),
+            (5400000, 5650000, 0.0025),
+            (5650000, 5950000, 0.005),
+            (5950000, 6300000, 0.0075),
+            (6300000, 6750000, 0.01),
+            (6750000, 7500000, 0.0125),
+            (7500000, 8550000, 0.015),
+            (8550000, 9650000, 0.0175),
+            (9650000, 10050000, 0.02),
+            (10050000, 10350000, 0.0225),
+            (10350000, 10700000, 0.025),
+            (10700000, 11050000, 0.03),
+            (11050000, 11600000, 0.035),
+            (11600000, 12500000, 0.04),
+            (12500000, 13750000, 0.05),
+            (13750000, 15100000, 0.06),
+            (15100000, 16950000, 0.07),
+            (16950000, 19750000, 0.08),
+            (19750000, 24150000, 0.09),
+            (24150000, 26450000, 0.1),
+            (26450000, 28000000, 0.11),
+            (28000000, 30050000, 0.12),
+            (30050000, 32400000, 0.13),
+            (32400000, 35400000, 0.14),
+            (35400000, 39100000, 0.15),
+            (39100000, 43850000, 0.16),
+            (43850000, 47800000, 0.17),
+            (47800000, 51400000, 0.18),
+            (51400000, 56300000, 0.19),
+            (56300000, 62200000, 0.2),
+            (62200000, 68600000, 0.21),
+            (68600000, 77500000, 0.22),
+            (77500000, 89000000, 0.23),
+            (89000000, 103000000, 0.24),
+            (103000000, 125000000, 0.25),
+            (125000000, 157000000, 0.26),
+            (157000000, 206000000, 0.27),
+            (206000000, 337000000, 0.28),
+            (337000000, 454000000, 0.29),
+            (454000000, 550000000, 0.3),
+            (550000000, 695000000, 0.31),
+            (695000000, 910000000, 0.32),
+            (910000000, 1400000000, 0.33),
+            (1400000000, float('inf'), 0.34)
+        ]
+    elif category == 'B':
+        return [
+            (0, 6200000, 0.0),
+            (6200000, 6500000, 0.0025),
+            (6500000, 6850000, 0.005),
+            (6850000, 7300000, 0.0075),
+            (7300000, 9200000, 0.01),
+            (9200000, 10750000, 0.015),
+            (10750000, 11250000, 0.02),
+            (11250000, 11600000, 0.025),
+            (11600000, 12600000, 0.03),
+            (12600000, 13600000, 0.04),
+            (13600000, 14950000, 0.05),
+            (14950000, 16400000, 0.06),
+            (16400000, 18450000, 0.07),
+            (18450000, 21850000, 0.08),
+            (21850000, 26000000, 0.09),
+            (26000000, 27700000, 0.10),
+            (27700000, 29350000, 0.11),
+            (29350000, 31450000, 0.12),
+            (31450000, 33950000, 0.13),
+            (33950000, 37100000, 0.14),
+            (37100000, 41100000, 0.15),
+            (41100000, 45800000, 0.16),
+            (45800000, 49500000, 0.17),
+            (49500000, 53800000, 0.18),
+            (53800000, 58500000, 0.19),
+            (58500000, 64000000, 0.20),
+            (64000000, 71000000, 0.21),
+            (71000000, 80000000, 0.22),
+            (80000000, 93000000, 0.23),
+            (93000000, 109000000, 0.24),
+            (109000000, 129000000, 0.25),
+            (129000000, 163000000, 0.26),
+            (163000000, 211000000, 0.27),
+            (211000000, 374000000, 0.28),
+            (374000000, 459000000, 0.29),
+            (459000000, 555000000, 0.30),
+            (555000000, 704000000, 0.31),
+            (704000000, 957000000, 0.32),
+            (957000000, 1405000000, 0.33),
+            (1405000000, float('inf'), 0.34)
+        ]
+    elif category == 'C':
+        return [
+            (0, 6600000, 0.0),
+            (6600000, 6950000, 0.0025),
+            (6950000, 7350000, 0.005),
+            (7350000, 7800000, 0.0075),
+            (7800000, 8850000, 0.01),
+            (8850000, 9800000, 0.0125),
+            (9800000, 10950000, 0.02),
+            (10950000, 11200000, 0.0175),
+            (11200000, 12050000, 0.02),
+            (12050000, 12950000, 0.03),
+            (12950000, 14150000, 0.04),
+            (14150000, 15550000, 0.05),
+            (15550000, 17050000, 0.06),
+            (17050000, 19500000, 0.07),
+            (19500000, 22700000, 0.08),
+            (22700000, 26600000, 0.09),
+            (26600000, 28100000, 0.10),
+            (28100000, 30100000, 0.11),
+            (30100000, 32600000, 0.12),
+            (32600000, 35400000, 0.13),
+            (35400000, 38900000, 0.14),
+            (38900000, 43000000, 0.15),
+            (43000000, 47400000, 0.16),
+            (47400000, 51200000, 0.17),
+            (51200000, 55800000, 0.18),
+            (55800000, 60400000, 0.19),
+            (60400000, 66700000, 0.20),
+            (66700000, 74500000, 0.21),
+            (74500000, 83200000, 0.22),
+            (83200000, 95600000, 0.23),
+            (95600000, 110000000, 0.24),
+            (110000000, 134000000, 0.25),
+            (134000000, 169000000, 0.26),
+            (169000000, 221000000, 0.27),
+            (221000000, 390000000, 0.28),
+            (390000000, 463000000, 0.29),
+            (463000000, 561000000, 0.30),
+            (561000000, 709000000, 0.31),
+            (709000000, 965000000, 0.32),
+            (965000000, 1419000000, 0.33),
+            (1419000000, float('inf'), 0.34)
+        ]
+    else:
+        raise ValueError("Kategori TER tidak valid")
+
+# PTKP berdasarkan status
+ptkp_dict = {
+    'TK/0': 54000000, 'TK/1': 58500000, 'TK/2': 63000000, 'TK/3': 67500000,
+    'K/0': 58500000, 'K/1': 63000000, 'K/2': 67500000, 'K/3': 72000000,
+    'K/I/0': 112500000, 'K/I/1': 117000000, 'K/I/2': 121500000, 'K/I/3': 126000000
+}
+
+# Fungsi untuk menentukan kategori TER berdasarkan status pernikahan dan tanggungan
+def determine_ter_category(status_prefix, jumlah_tanggungan):
+    if status_prefix == "TK" and jumlah_tanggungan == 0:
+        return "A"
+    elif status_prefix == "TK" and jumlah_tanggungan in [1, 2, 3]:
+        return "B"
+    elif status_prefix == "K" and jumlah_tanggungan in [0, 1, 2, 3]:
+        return "C"
+    elif status_prefix == "K/I" and jumlah_tanggungan in [0, 1, 2, 3]:
+        return "C"
+    else:
+        # Default category if none match (this should not happen given proper validation)
+        return "A"
+
+# Fungsi memvalidasi input numerik
+def input_angka(prompt, minimum=0):
+    while True:
+        try:
+            nilai = int(input(prompt))
+            if nilai < minimum:
+                print(f"Nilai harus lebih dari atau sama dengan {minimum}")
+                continue
+            return nilai
+        except ValueError:
+            print("Masukkan angka yang valid")
+
+# Fungsi memvalidasi input pilihan terbatas
+def input_pilihan(prompt, pilihan_valid):
+    while True:
+        nilai = input(prompt).strip().upper()
+        if nilai in pilihan_valid:
+            return nilai
+        print(f"Pilihan tidak valid. Masukkan salah satu dari: {', '.join(pilihan_valid)}")
+
+# Fungsi untuk membersihkan layar
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+# Mendapatkan tarif TER berdasarkan kategori dan penghasilan bruto
+def get_TER_rate(kategori, penghasilan_neto_bulanan):
+    for batas_bawah, batas_atas, tarif in get_ter_rate(kategori):
+        if batas_bawah < penghasilan_neto_bulanan <= batas_atas:
+            return tarif
+    raise ValueError(f"Tidak ada tarif TER untuk penghasilan: Rp{penghasilan_neto_bulanan:,}")
+
+# Fungsi untuk menghitung PPh 21 dengan tarif progresif
+def pph_progresif_tahunan(pkp):
+    """
+    Menghitung PPh 21 tahunan berdasarkan PKP dengan tarif progresif
+    """
+    tarif = [
+        (0, 60000000, 0.05),
+        (60000000, 250000000, 0.15),
+        (250000000, 500000000, 0.25),
+        (500000000, 5000000000, 0.30),
+        (5000000000, float('inf'), 0.35),
+    ]
+    total_pph = 0
+    sisa_pkp = pkp
+
+    for batas_bawah, batas_atas, rate in tarif:
+        if sisa_pkp <= 0:
+            break
+        ambil = min(sisa_pkp, batas_atas - batas_bawah)
+        total_pph += ambil * rate
+        sisa_pkp -= ambil
+
+    return total_pph
+
+# Fungsi untuk menghitung total penghasilan dan iuran setahun
+def hitung_total_tahunan(data_karyawan):
+    """
+    Menghitung total penghasilan bruto, iuran, biaya jabatan, dan penghasilan neto setahun
+    """
+    total_penghasilan_bruto = 0
+    total_iuran = 0
+
+    for bulan in range(1, 13):
+        gaji_pokok = data_karyawan['gaji_bulanan'].get(str(bulan), 0)
+        tunjangan_tetap = data_karyawan['tunjangan_tetap_bulanan'].get(str(bulan), 0)
+        tunjangan_tidak_tetap = data_karyawan['tunjangan_tidak_tetap_bulanan'].get(str(bulan), 0)
+        
+        # Ambil iuran BPJS manual dari data karyawan
+        iuran_jht = data_karyawan['iuran_jht_bulanan'].get(str(bulan), 0)
+        iuran_jp = data_karyawan['iuran_jp_bulanan'].get(str(bulan), 0)
+        iuran_jkk = data_karyawan['iuran_jkk_bulanan'].get(str(bulan), 0)
+        iuran_jkm = data_karyawan['iuran_jkm_bulanan'].get(str(bulan), 0)
+        iuran_jkp = data_karyawan['iuran_jkp_bulanan'].get(str(bulan), 0)
+
+        penghasilan_bruto_bulan = gaji_pokok + tunjangan_tetap + tunjangan_tidak_tetap
+        iuran_bulan = iuran_jht + iuran_jp + iuran_jkk + iuran_jkm + iuran_jkp
+
+        total_penghasilan_bruto += penghasilan_bruto_bulan
+        total_iuran += iuran_bulan
+
+    # Hitung biaya jabatan (5% dari penghasilan bruto, maksimal Rp 6.000.000 per tahun)
+    biaya_jabatan = min(total_penghasilan_bruto * 0.05, 6000000)
+
+    # Penghasilan neto setelah dikurangi iuran dan biaya jabatan
+    penghasilan_neto_tahunan = total_penghasilan_bruto - total_iuran - biaya_jabatan
+
+    return {
+        'total_penghasilan_bruto': total_penghasilan_bruto,
+        'total_iuran': total_iuran,
+        'biaya_jabatan': biaya_jabatan,
+        'penghasilan_neto_tahunan': penghasilan_neto_tahunan
+    }
+
+# ===== FUNGSI PERUSAHAAN =====
+
+# Fungsi untuk memuat data perusahaan
+def load_perusahaan_data():
+    if os.path.exists(PERUSAHAAN_FILE):
+        with open(PERUSAHAAN_FILE, 'r') as file:
+            return json.load(file)
+    return {}
+
+# Fungsi untuk menyimpan data perusahaan
+def save_perusahaan_data(data):
+    with open(PERUSAHAAN_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+# Fungsi untuk menambahkan perusahaan baru
+def tambah_perusahaan():
+    clear_screen()
+    print("=== TAMBAH DATA PERUSAHAAN BARU ===\n")
+
+    perusahaan_data = load_perusahaan_data()
+
+    kode_pt = input("Kode PT (contoh: PT001): ").strip().upper()
+    if kode_pt in perusahaan_data:
+        print(f"Perusahaan dengan kode {kode_pt} sudah ada dalam database.")
+        input("Tekan Enter untuk kembali...")
+        return
+
+    nama_pt = input("Nama PT: ").strip()
+    alamat_pt = input("Alamat PT: ").strip()
+    npwp_pt = input("NPWP PT: ").strip()
+
+    perusahaan_data[kode_pt] = {
+        "nama": nama_pt,
+        "alamat": alamat_pt,
+        "npwp": npwp_pt
+    }
+
+    save_perusahaan_data(perusahaan_data)
+    print(f"\nData perusahaan {nama_pt} berhasil disimpan dengan kode {kode_pt}!")
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Fungsi untuk memilih perusahaan
+def pilih_perusahaan():
+    perusahaan_data = load_perusahaan_data()
+    
+    if not perusahaan_data:
+        print("Belum ada data perusahaan yang tersimpan.")
+        print("Silakan tambah perusahaan terlebih dahulu.")
+        input("\nTekan Enter untuk kembali...")
+        return None
+
+    print("Daftar Perusahaan:")
+    perusahaan_list = list(perusahaan_data.items())
+    for i, (kode, data) in enumerate(perusahaan_list, 1):
+        print(f"{i}. {data['nama']} (Kode: {kode})")
+
+    pilihan = input("\nPilih nomor perusahaan (0 untuk kembali): ")
+
+    if pilihan == "0":
+        return None
+
+    try:
+        idx = int(pilihan) - 1
+        if not (0 <= idx < len(perusahaan_list)):
+            print("Pilihan tidak valid.")
+            input("\nTekan Enter untuk kembali...")
+            return None
+        return perusahaan_list[idx][0]  # Return kode perusahaan
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali...")
+        return None
+
+# Fungsi untuk memuat data karyawan
+def load_karyawan_data():
+    if os.path.exists(KARYAWAN_FILE):
+        with open(KARYAWAN_FILE, 'r') as file:
+            return json.load(file)
+    return {}
+
+# Fungsi untuk menyimpan data karyawan
+def save_karyawan_data(data):
+    with open(KARYAWAN_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+# Fungsi untuk memuat data perhitungan
+def load_perhitungan_data():
+    if os.path.exists(PERHITUNGAN_FILE):
+        try:
+            with open(PERHITUNGAN_FILE, 'r') as file:
+                data = json.load(file)
+                # Force return as list - if it's a dict, start fresh
+                return data if isinstance(data, list) else []
+        except:
+            return []
+    return []
+
+# Fungsi untuk menyimpan data perhitungan
+def save_perhitungan_data(data):
+    with open(PERHITUNGAN_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
+
+# Fungsi untuk menambahkan karyawan baru (dengan revisi)
+def tambah_karyawan():
+    clear_screen()
+    print("=== TAMBAH DATA KARYAWAN BARU ===\n")
+
+    # Pilih perusahaan terlebih dahulu
+    kode_pt = pilih_perusahaan()
+    if not kode_pt:
+        return
+    
+    perusahaan_data = load_perusahaan_data()
+    nama_pt = perusahaan_data[kode_pt]['nama']
+    
+    clear_screen()
+    print(f"=== TAMBAH KARYAWAN UNTUK: {nama_pt} ===\n")
+
+    karyawan_data = load_karyawan_data()
+
+    nik = input("NIK: ")
+    if nik in karyawan_data:
+        print(f"Karyawan dengan NIK {nik} sudah ada dalam database.")
+        input("Tekan Enter untuk kembali...")
+        return
+
+    nama = input("Nama: ")
+    jabatan = input("Jabatan: ")
+
+    # Input jenis kelamin
+    jenis_kelamin = input_pilihan("Jenis Kelamin (1. Laki-laki / 2. Perempuan): ", ["1", "2"])
+    jenis_kelamin_text = "Laki-laki" if jenis_kelamin == "1" else "Perempuan"
+
+    # Input kewarganegaraan
+    warga_negara = input_pilihan("Kewarganegaraan (1. WNI / 2. WNA): ", ["1", "2"])
+    warga_negara_text = "WNI" if warga_negara == "1" else "WNA"
+
+    # Input status pernikahan
+    status_nikah = input_pilihan("Status Pernikahan (1. Menikah / 2. Belum Menikah / 3. Menikah dengan Istri Bekerja): ", ["1", "2", "3"])
+
+    # Tentukan status prefix berdasarkan pilihan
+    if status_nikah == "1":
+        status_prefix = "K"
+    elif status_nikah == "2":
+        status_prefix = "TK"
+    else:  # status_nikah == "3"
+        status_prefix = "K/I"
+
+    # Input jumlah tanggungan
+    jumlah_tanggungan = input_angka("Jumlah Tanggungan (0-3): ", 0)
+    if jumlah_tanggungan > 3:
+        jumlah_tanggungan = 3
+        print("Jumlah tanggungan maksimal adalah 3, nilai disesuaikan menjadi 3.")
+
+    # Status PTKP lengkap
+    status_ptkp = f"{status_prefix}/{jumlah_tanggungan}"
+
+    # Hitung nilai PTKP
+    if status_ptkp in ptkp_dict:
+        nilai_ptkp = ptkp_dict[status_ptkp]
+    else:
+        print("Status PTKP tidak valid, menggunakan nilai default TK/0")
+        status_ptkp = "TK/0"
+        nilai_ptkp = ptkp_dict[status_ptkp]
+
+    # Tentukan kategori TER
+    kategori_ter = determine_ter_category(status_prefix, jumlah_tanggungan)
+
+    npwp = input("NPWP (Masukkan '-' jika tidak ada): ")
+
+    # Inisialisasi data pemasukan dan iuran kosong
+    gaji_bulanan = {str(i): 0 for i in range(1, 13)}
+    tunjangan_tetap_bulanan = {str(i): 0 for i in range(1, 13)}
+    tunjangan_tidak_tetap_bulanan = {str(i): 0 for i in range(1, 13)}
+    
+    # Inisialisasi data iuran BPJS kosong (untuk input manual)
+    iuran_jht_bulanan = {str(i): 0 for i in range(1, 13)}
+    iuran_jp_bulanan = {str(i): 0 for i in range(1, 13)}
+    iuran_jkk_bulanan = {str(i): 0 for i in range(1, 13)}
+    iuran_jkm_bulanan = {str(i): 0 for i in range(1, 13)}
+    iuran_jkp_bulanan = {str(i): 0 for i in range(1, 13)}
+
+    # Simpan data karyawan
+    karyawan_data[nik] = {
+        "nama": nama,
+        "jabatan": jabatan,
+        "jenis_kelamin": jenis_kelamin_text,
+        "warga_negara": warga_negara_text,
+        "status_ptkp": status_ptkp,
+        "nilai_ptkp": nilai_ptkp,
+        "kategori_ter": kategori_ter,
+        "npwp": npwp,
+        "kode_pt": kode_pt,  # Tambahan kode perusahaan
+        "gaji_bulanan": gaji_bulanan,
+        "tunjangan_tetap_bulanan": tunjangan_tetap_bulanan,
+        "tunjangan_tidak_tetap_bulanan": tunjangan_tidak_tetap_bulanan,
+        "iuran_jht_bulanan": iuran_jht_bulanan,
+        "iuran_jp_bulanan": iuran_jp_bulanan,
+        "iuran_jkk_bulanan": iuran_jkk_bulanan,
+        "iuran_jkm_bulanan": iuran_jkm_bulanan,
+        "iuran_jkp_bulanan": iuran_jkp_bulanan
+    }
+
+    save_karyawan_data(karyawan_data)
+    print(f"\nData karyawan {nama} berhasil disimpan untuk perusahaan {nama_pt}!")
+    print("Selanjutnya, gunakan menu 'Input Pemasukan' untuk mengisi gaji, tunjangan, dan iuran BPJS.")
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Fungsi untuk mendapatkan karyawan berdasarkan perusahaan
+def get_karyawan_by_pt(kode_pt):
+    karyawan_data = load_karyawan_data()
+    karyawan_pt = {}
+    
+    for nik, data in karyawan_data.items():
+        if data.get('kode_pt') == kode_pt:
+            karyawan_pt[nik] = data
+    
+    return karyawan_pt
+
+# Fungsi untuk input pemasukan bulanan (dengan revisi)
+def input_pemasukan():
+    clear_screen()
+    print("=== INPUT PEMASUKAN KARYAWAN ===\n")
+
+    # Pilih perusahaan terlebih dahulu
+    kode_pt = pilih_perusahaan()
+    if not kode_pt:
+        return
+    
+    perusahaan_data = load_perusahaan_data()
+    nama_pt = perusahaan_data[kode_pt]['nama']
+    
+    # Ambil karyawan berdasarkan perusahaan
+    karyawan_data = get_karyawan_by_pt(kode_pt)
+
+    if not karyawan_data:
+        print(f"Belum ada karyawan yang terdaftar untuk perusahaan {nama_pt}.")
+        print("Silakan tambah karyawan terlebih dahulu.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    clear_screen()
+    print(f"=== INPUT PEMASUKAN - {nama_pt} ===\n")
+
+    # Pilih karyawan
+    print("Daftar Karyawan:")
+    karyawan_list = list(karyawan_data.items())
+    for i, (nik, data) in enumerate(karyawan_list, 1):
+        print(f"{i}. {data['nama']} (NIK: {nik})")
+
+    pilihan_karyawan = input("\nPilih nomor karyawan (0 untuk kembali): ")
+
+    if pilihan_karyawan == "0":
+        return
+
+    try:
+        idx = int(pilihan_karyawan) - 1
+        if not (0 <= idx < len(karyawan_list)):
+            print("Pilihan tidak valid.")
+            input("\nTekan Enter untuk kembali ke menu...")
+            return
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    nik, karyawan = karyawan_list[idx]
+
+    # Pilih bulan
+    print(f"\n=== INPUT PEMASUKAN UNTUK: {karyawan['nama']} ===")
+    print("Pilih bulan:")
+    for i, nama_bulan in NAMA_BULAN_LENGKAP.items():
+        print(f"{i:2d}. {nama_bulan}")
+
+    pilihan_bulan = input("\nPilih nomor bulan (0 untuk kembali): ")
+
+    if pilihan_bulan == "0":
+        return
+
+    try:
+        bulan = int(pilihan_bulan)
+        if not (1 <= bulan <= 12):
+            print("Pilihan bulan tidak valid.")
+            input("\nTekan Enter untuk kembali ke menu...")
+            return
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    nama_bulan = NAMA_BULAN_LENGKAP[bulan]
+    bulan_str = str(bulan)
+
+    # Load data karyawan lengkap untuk update
+    all_karyawan_data = load_karyawan_data()
+
+    print(f"\n=== INPUT PEMASUKAN BULAN {nama_bulan.upper()} ===")
+    print(f"Karyawan: {karyawan['nama']}")
+
+    # Input data pemasukan
+    print("\n--- PEMASUKAN ---")
+    gaji_pokok = input_angka(f"Gaji Pokok bulan {nama_bulan}: Rp ")
+    tunjangan_tetap = input_angka(f"Tunjangan Tetap bulan {nama_bulan}: Rp ")
+    tunjangan_tidak_tetap = input_angka(f"Tunjangan Tidak Tetap bulan {nama_bulan}: Rp ")
+
+    print("\n--- IURAN BPJS (Input Manual) ---")
+    iuran_jht = input_angka(f"Iuran JHT bulan {nama_bulan}: Rp ")
+    iuran_jp = input_angka(f"Iuran JP bulan {nama_bulan}: Rp ")
+    iuran_jkk = input_angka(f"Iuran JKK bulan {nama_bulan}: Rp ")
+    iuran_jkm = input_angka(f"Iuran JKM bulan {nama_bulan}: Rp ")
+    iuran_jkp = input_angka(f"Iuran JKP (BPJS Kesehatan) bulan {nama_bulan}: Rp ")
+
+    # Update data karyawan
+    all_karyawan_data[nik]['gaji_bulanan'][bulan_str] = gaji_pokok
+    all_karyawan_data[nik]['tunjangan_tetap_bulanan'][bulan_str] = tunjangan_tetap
+    all_karyawan_data[nik]['tunjangan_tidak_tetap_bulanan'][bulan_str] = tunjangan_tidak_tetap
+    all_karyawan_data[nik]['iuran_jht_bulanan'][bulan_str] = iuran_jht
+    all_karyawan_data[nik]['iuran_jp_bulanan'][bulan_str] = iuran_jp
+    all_karyawan_data[nik]['iuran_jkk_bulanan'][bulan_str] = iuran_jkk
+    all_karyawan_data[nik]['iuran_jkm_bulanan'][bulan_str] = iuran_jkm
+    all_karyawan_data[nik]['iuran_jkp_bulanan'][bulan_str] = iuran_jkp
+
+    # Simpan data
+    save_karyawan_data(all_karyawan_data)
+
+    # Tampilkan ringkasan
+    penghasilan_bruto = gaji_pokok + tunjangan_tetap + tunjangan_tidak_tetap
+    total_iuran = iuran_jht + iuran_jp + iuran_jkk + iuran_jkm + iuran_jkp
+    penghasilan_neto = penghasilan_bruto - total_iuran
+
+    print(f"\n=== RINGKASAN PEMASUKAN BULAN {nama_bulan.upper()} ===")
+    print(f"Penghasilan Bruto: Rp {penghasilan_bruto:,}")
+    print(f"Total Iuran BPJS: Rp {total_iuran:,}")
+    print(f"Penghasilan Neto: Rp {penghasilan_neto:,}")
+
+    print(f"\nData pemasukan bulan {nama_bulan} untuk {karyawan['nama']} berhasil disimpan!")
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Fungsi untuk menghitung PPh 21 bulanan
+def hitung_pph21_bulanan():
+    clear_screen()
+    print("=== HITUNG PPH 21 BULANAN ===\n")
+
+    # Pilih perusahaan terlebih dahulu
+    kode_pt = pilih_perusahaan()
+    if not kode_pt:
+        return
+    
+    perusahaan_data = load_perusahaan_data()
+    nama_pt = perusahaan_data[kode_pt]['nama']
+    
+    # Ambil karyawan berdasarkan perusahaan
+    karyawan_data = get_karyawan_by_pt(kode_pt)
+
+    if not karyawan_data:
+        print(f"Belum ada karyawan yang terdaftar untuk perusahaan {nama_pt}.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    clear_screen()
+    print(f"=== HITUNG PPH 21 BULANAN - {nama_pt} ===\n")
+
+    # Pilih karyawan
+    print("Daftar Karyawan:")
+    karyawan_list = list(karyawan_data.items())
+    for i, (nik, data) in enumerate(karyawan_list, 1):
+        print(f"{i}. {data['nama']} (NIK: {nik})")
+
+    pilihan_karyawan = input("\nPilih nomor karyawan (0 untuk kembali): ")
+
+    if pilihan_karyawan == "0":
+        return
+
+    try:
+        idx = int(pilihan_karyawan) - 1
+        if not (0 <= idx < len(karyawan_list)):
+            print("Pilihan tidak valid.")
+            input("\nTekan Enter untuk kembali ke menu...")
+            return
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    nik, karyawan = karyawan_list[idx]
+
+    # Pilih bulan
+    print(f"\n=== PERHITUNGAN PPH 21 UNTUK: {karyawan['nama']} ===")
+    print("Pilih bulan:")
+    for i, nama_bulan in NAMA_BULAN_LENGKAP.items():
+        print(f"{i:2d}. {nama_bulan}")
+
+    pilihan_bulan = input("\nPilih nomor bulan (0 untuk kembali): ")
+
+    if pilihan_bulan == "0":
+        return
+
+    try:
+        bulan = int(pilihan_bulan)
+        if not (1 <= bulan <= 12):
+            print("Pilihan bulan tidak valid.")
+            input("\nTekan Enter untuk kembali ke menu...")
+            return
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    # Ambil data pemasukan bulan tersebut
+    bulan_str = str(bulan)
+    gaji_pokok = karyawan['gaji_bulanan'].get(bulan_str, 0)
+    tunjangan_tetap = karyawan['tunjangan_tetap_bulanan'].get(bulan_str, 0)
+    tunjangan_tidak_tetap = karyawan['tunjangan_tidak_tetap_bulanan'].get(bulan_str, 0)
+
+    if gaji_pokok == 0 and tunjangan_tetap == 0 and tunjangan_tidak_tetap == 0:
+        print(f"Belum ada data pemasukan untuk bulan {NAMA_BULAN_LENGKAP[bulan]}.")
+        print("Silakan input pemasukan terlebih dahulu.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    # Hitung penghasilan bruto
+    penghasilan_bruto = gaji_pokok + tunjangan_tetap + tunjangan_tidak_tetap
+
+    # Ambil iuran BPJS
+    iuran_jht = karyawan['iuran_jht_bulanan'].get(bulan_str, 0)
+    iuran_jp = karyawan['iuran_jp_bulanan'].get(bulan_str, 0)
+    iuran_jkk = karyawan['iuran_jkk_bulanan'].get(bulan_str, 0)
+    iuran_jkm = karyawan['iuran_jkm_bulanan'].get(bulan_str, 0)
+    iuran_jkp = karyawan['iuran_jkp_bulanan'].get(bulan_str, 0)
+
+    total_iuran = iuran_jht + iuran_jp + iuran_jkk + iuran_jkm + iuran_jkp
+
+    # Hitung biaya jabatan bulanan
+    biaya_jabatan_bulanan = min(penghasilan_bruto * 0.05, 500000)  # 5%, maks 500rb per bulan
+
+    # Penghasilan neto bulanan
+    penghasilan_neto = penghasilan_bruto - total_iuran - biaya_jabatan_bulanan
+
+    # Pilih metode perhitungan
+    print(f"\n=== PILIH METODE PERHITUNGAN ===")
+    print("1. Gross (Berdasarkan TER)")
+    print("2. Gross Up (Berdasarkan progresif tahunan)")
+
+    metode = input_pilihan("Pilih metode (1/2): ", ["1", "2"])
+
+    if metode == "1":
+        # Metode Gross (TER)
+        kategori_ter = karyawan['kategori_ter']
+        
+        try:
+            tarif_ter = get_TER_rate(kategori_ter, penghasilan_neto)
+            pph21_bulanan = penghasilan_neto * tarif_ter
+            
+            print(f"\n=== HASIL PERHITUNGAN PPH 21 BULANAN (GROSS) ===")
+            print(f"Bulan: {NAMA_BULAN_LENGKAP[bulan]}")
+            print(f"Karyawan: {karyawan['nama']}")
+            print(f"NIK: {nik}")
+            print(f"Status PTKP: {karyawan['status_ptkp']}")
+            print(f"Kategori TER: {kategori_ter}")
+            print(f"---")
+            print(f"Gaji Pokok: Rp {gaji_pokok:,}")
+            print(f"Tunjangan Tetap: Rp {tunjangan_tetap:,}")
+            print(f"Tunjangan Tidak Tetap: Rp {tunjangan_tidak_tetap:,}")
+            print(f"Penghasilan Bruto: Rp {penghasilan_bruto:,}")
+            print(f"---")
+            print(f"Iuran JHT: Rp {iuran_jht:,}")
+            print(f"Iuran JP: Rp {iuran_jp:,}")
+            print(f"Iuran JKK: Rp {iuran_jkk:,}")
+            print(f"Iuran JKM: Rp {iuran_jkm:,}")
+            print(f"Iuran JKP: Rp {iuran_jkp:,}")
+            print(f"Total Iuran: Rp {total_iuran:,}")
+            print(f"Biaya Jabatan: Rp {biaya_jabatan_bulanan:,}")
+            print(f"Penghasilan Neto: Rp {penghasilan_neto:,}")
+            print(f"---")
+            print(f"Tarif TER ({kategori_ter}): {tarif_ter * 100:.2f}%")
+            print(f"PPh 21 Terutang: Rp {pph21_bulanan:,}")
+            
+            metode_text = "Gross (TER)"
+            
+        except ValueError as e:
+            print(f"Error: {e}")
+            input("\nTekan Enter untuk kembali ke menu...")
+            return
+
+    else:
+        # Metode Gross Up (Progresif)
+        # Hitung estimasi penghasilan tahunan berdasarkan bulan ini
+        penghasilan_neto_tahunan_estimasi = penghasilan_neto * 12
+        
+        # Hitung PKP (Penghasilan Kena Pajak)
+        pkp = max(0, penghasilan_neto_tahunan_estimasi - karyawan['nilai_ptkp'])
+        
+        # Hitung PPh 21 tahunan dengan tarif progresif
+        pph21_tahunan = pph_progresif_tahunan(pkp)
+        
+        # PPh 21 bulanan adalah 1/12 dari tahunan
+        pph21_bulanan = pph21_tahunan / 12
+        
+        print(f"\n=== HASIL PERHITUNGAN PPH 21 BULANAN (GROSS UP) ===")
+        print(f"Bulan: {NAMA_BULAN_LENGKAP[bulan]}")
+        print(f"Karyawan: {karyawan['nama']}")
+        print(f"NIK: {nik}")
+        print(f"Status PTKP: {karyawan['status_ptkp']}")
+        print(f"---")
+        print(f"Gaji Pokok: Rp {gaji_pokok:,}")
+        print(f"Tunjangan Tetap: Rp {tunjangan_tetap:,}")
+        print(f"Tunjangan Tidak Tetap: Rp {tunjangan_tidak_tetap:,}")
+        print(f"Penghasilan Bruto: Rp {penghasilan_bruto:,}")
+        print(f"---")
+        print(f"Iuran JHT: Rp {iuran_jht:,}")
+        print(f"Iuran JP: Rp {iuran_jp:,}")
+        print(f"Iuran JKK: Rp {iuran_jkk:,}")
+        print(f"Iuran JKM: Rp {iuran_jkm:,}")
+        print(f"Iuran JKP: Rp {iuran_jkp:,}")
+        print(f"Total Iuran: Rp {total_iuran:,}")
+        print(f"Biaya Jabatan: Rp {biaya_jabatan_bulanan:,}")
+        print(f"Penghasilan Neto: Rp {penghasilan_neto:,}")
+        print(f"---")
+        print(f"Estimasi Penghasilan Neto Tahunan: Rp {penghasilan_neto_tahunan_estimasi:,}")
+        print(f"PTKP ({karyawan['status_ptkp']}): Rp {karyawan['nilai_ptkp']:,}")
+        print(f"PKP: Rp {pkp:,}")
+        print(f"PPh 21 Tahunan (Progresif): Rp {pph21_tahunan:,}")
+        print(f"PPh 21 Bulanan: Rp {pph21_bulanan:,}")
+        
+        metode_text = "Gross Up (Progresif)"
+
+    # Simpan hasil perhitungan
+    perhitungan_data = load_perhitungan_data()
+    
+    hasil_perhitungan = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "kode_pt": kode_pt,
+        "nama_pt": nama_pt,
+        "nik": nik,
+        "nama_karyawan": karyawan['nama'],
+        "bulan": bulan,
+        "nama_bulan": NAMA_BULAN_LENGKAP[bulan],
+        "metode": metode_text,
+        "gaji_pokok": gaji_pokok,
+        "tunjangan_tetap": tunjangan_tetap,
+        "tunjangan_tidak_tetap": tunjangan_tidak_tetap,
+        "penghasilan_bruto": penghasilan_bruto,
+        "iuran_jht": iuran_jht,
+        "iuran_jp": iuran_jp,
+        "iuran_jkk": iuran_jkk,
+        "iuran_jkm": iuran_jkm,
+        "iuran_jkp": iuran_jkp,
+        "total_iuran": total_iuran,
+        "biaya_jabatan": biaya_jabatan_bulanan,
+        "penghasilan_neto": penghasilan_neto,
+        "pph21_bulanan": pph21_bulanan,
+        "status_ptkp": karyawan['status_ptkp'],
+        "kategori_ter": karyawan.get('kategori_ter', ''),
+        "tarif_ter": tarif_ter if metode == "1" else 0
+    }
+    
+    perhitungan_data.append(hasil_perhitungan)
+    save_perhitungan_data(perhitungan_data)
+
+    print(f"\nHasil perhitungan berhasil disimpan!")
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Fungsi untuk menghitung PPh 21 tahunan
+def hitung_pph21_tahunan():
+    clear_screen()
+    print("=== HITUNG PPH 21 TAHUNAN ===\n")
+
+    # Pilih perusahaan terlebih dahulu
+    kode_pt = pilih_perusahaan()
+    if not kode_pt:
+        return
+    
+    perusahaan_data = load_perusahaan_data()
+    nama_pt = perusahaan_data[kode_pt]['nama']
+    
+    # Ambil karyawan berdasarkan perusahaan
+    karyawan_data = get_karyawan_by_pt(kode_pt)
+
+    if not karyawan_data:
+        print(f"Belum ada karyawan yang terdaftar untuk perusahaan {nama_pt}.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    clear_screen()
+    print(f"=== HITUNG PPH 21 TAHUNAN - {nama_pt} ===\n")
+
+    # Pilih karyawan
+    print("Daftar Karyawan:")
+    karyawan_list = list(karyawan_data.items())
+    for i, (nik, data) in enumerate(karyawan_list, 1):
+        print(f"{i}. {data['nama']} (NIK: {nik})")
+
+    pilihan_karyawan = input("\nPilih nomor karyawan (0 untuk kembali): ")
+
+    if pilihan_karyawan == "0":
+        return
+
+    try:
+        idx = int(pilihan_karyawan) - 1
+        if not (0 <= idx < len(karyawan_list)):
+            print("Pilihan tidak valid.")
+            input("\nTekan Enter untuk kembali ke menu...")
+            return
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    nik, karyawan = karyawan_list[idx]
+
+    # Hitung total tahunan
+    total_data = hitung_total_tahunan(karyawan)
+
+    if total_data['total_penghasilan_bruto'] == 0:
+        print("Belum ada data pemasukan untuk karyawan ini.")
+        print("Silakan input pemasukan terlebih dahulu.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    # Hitung PKP (Penghasilan Kena Pajak)
+    pkp = max(0, total_data['penghasilan_neto_tahunan'] - karyawan['nilai_ptkp'])
+
+    # Hitung PPh 21 tahunan dengan tarif progresif
+    pph21_tahunan = pph_progresif_tahunan(pkp)
+
+    # Tampilkan hasil
+    print(f"\n=== HASIL PERHITUNGAN PPH 21 TAHUNAN ===")
+    print(f"Karyawan: {karyawan['nama']}")
+    print(f"NIK: {nik}")
+    print(f"Status PTKP: {karyawan['status_ptkp']}")
+    print(f"---")
+    print(f"Total Penghasilan Bruto: Rp {total_data['total_penghasilan_bruto']:,}")
+    print(f"Total Iuran BPJS: Rp {total_data['total_iuran']:,}")
+    print(f"Biaya Jabatan: Rp {total_data['biaya_jabatan']:,}")
+    print(f"Penghasilan Neto: Rp {total_data['penghasilan_neto_tahunan']:,}")
+    print(f"PTKP ({karyawan['status_ptkp']}): Rp {karyawan['nilai_ptkp']:,}")
+    print(f"PKP: Rp {pkp:,}")
+    print(f"PPh 21 Tahunan: Rp {pph21_tahunan:,}")
+
+    # Simpan hasil perhitungan tahunan
+    perhitungan_data = load_perhitungan_data()
+    
+    hasil_perhitungan = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "kode_pt": kode_pt,
+        "nama_pt": nama_pt,
+        "nik": nik,
+        "nama_karyawan": karyawan['nama'],
+        "jenis": "tahunan",
+        "metode": "Progresif Tahunan",
+        "total_penghasilan_bruto": total_data['total_penghasilan_bruto'],
+        "total_iuran": total_data['total_iuran'],
+        "biaya_jabatan": total_data['biaya_jabatan'],
+        "penghasilan_neto_tahunan": total_data['penghasilan_neto_tahunan'],
+        "ptkp": karyawan['nilai_ptkp'],
+        "pkp": pkp,
+        "pph21_tahunan": pph21_tahunan,
+        "status_ptkp": karyawan['status_ptkp']
+    }
+    
+    perhitungan_data.append(hasil_perhitungan)
+    save_perhitungan_data(perhitungan_data)
+
+    print(f"\nHasil perhitungan berhasil disimpan!")
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Fungsi untuk melihat laporan perusahaan
+def lihat_laporan_perusahaan():
+    clear_screen()
+    print("=== LAPORAN PERUSAHAAN ===\n")
+
+    # Pilih perusahaan terlebih dahulu
+    kode_pt = pilih_perusahaan()
+    if not kode_pt:
+        return
+    
+    perusahaan_data = load_perusahaan_data()
+    nama_pt = perusahaan_data[kode_pt]['nama']
+    
+    # Ambil karyawan berdasarkan perusahaan
+    karyawan_data = get_karyawan_by_pt(kode_pt)
+
+    if not karyawan_data:
+        print(f"Belum ada karyawan yang terdaftar untuk perusahaan {nama_pt}.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    clear_screen()
+    print(f"=== LAPORAN GAJI PERUSAHAAN: {nama_pt} ===\n")
+
+    # Pilih bulan untuk laporan
+    print("Pilih bulan untuk laporan:")
+    for i, nama_bulan in NAMA_BULAN_LENGKAP.items():
+        print(f"{i:2d}. {nama_bulan}")
+    print("13. Semua Bulan")
+
+    pilihan_bulan = input("\nPilih nomor bulan (0 untuk kembali): ")
+
+    if pilihan_bulan == "0":
+        return
+
+    try:
+        if pilihan_bulan == "13":
+            # Tampilkan semua bulan
+            for bulan in range(1, 13):
+                tampilkan_laporan_bulan(karyawan_data, bulan, nama_pt)
+        else:
+            bulan = int(pilihan_bulan)
+            if not (1 <= bulan <= 12):
+                print("Pilihan bulan tidak valid.")
+                input("\nTekan Enter untuk kembali ke menu...")
+                return
+            tampilkan_laporan_bulan(karyawan_data, bulan, nama_pt)
+    except ValueError:
+        print("Input harus berupa angka.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+
+    input("\nTekan Enter untuk kembali ke menu...")
+
+def tampilkan_laporan_bulan(karyawan_data, bulan, nama_pt):
+    bulan_str = str(bulan)
+    nama_bulan = NAMA_BULAN_LENGKAP[bulan]
+    
+    print(f"\n{'='*100}")
+    print(f"LAPORAN GAJI BULAN {nama_bulan.upper()} - {nama_pt}")
+    print(f"{'='*100}")
+    
+    # Siapkan data untuk tabel
+    data_tabel = []
+    total_bruto = 0
+    total_iuran = 0
+    total_neto = 0
+    
+    for nik, karyawan in karyawan_data.items():
+        # Ambil data pemasukan bulan tersebut
+        gaji_pokok = karyawan['gaji_bulanan'].get(bulan_str, 0)
+        tunjangan_tetap = karyawan['tunjangan_tetap_bulanan'].get(bulan_str, 0)
+        tunjangan_tidak_tetap = karyawan['tunjangan_tidak_tetap_bulanan'].get(bulan_str, 0)
+        
+        # Ambil iuran BPJS
+        iuran_jht = karyawan['iuran_jht_bulanan'].get(bulan_str, 0)
+        iuran_jp = karyawan['iuran_jp_bulanan'].get(bulan_str, 0)
+        iuran_jkk = karyawan['iuran_jkk_bulanan'].get(bulan_str, 0)
+        iuran_jkm = karyawan['iuran_jkm_bulanan'].get(bulan_str, 0)
+        iuran_jkp = karyawan['iuran_jkp_bulanan'].get(bulan_str, 0)
+        
+        # Hitung total
+        penghasilan_bruto = gaji_pokok + tunjangan_tetap + tunjangan_tidak_tetap
+        total_iuran_karyawan = iuran_jht + iuran_jp + iuran_jkk + iuran_jkm + iuran_jkp
+        biaya_jabatan = min(penghasilan_bruto * 0.05, 500000)
+        penghasilan_neto = penghasilan_bruto - total_iuran_karyawan - biaya_jabatan
+        
+        # Tambahkan ke total
+        total_bruto += penghasilan_bruto
+        total_iuran += total_iuran_karyawan
+        total_neto += penghasilan_neto
+        
+        # Tambahkan ke data tabel
+        data_tabel.append([
+            karyawan['nama'][:20],  # Batasi nama maksimal 20 karakter
+            f"Rp {gaji_pokok:,.0f}",
+            f"Rp {tunjangan_tetap:,.0f}",
+            f"Rp {tunjangan_tidak_tetap:,.0f}",
+            f"Rp {penghasilan_bruto:,.0f}",
+            f"Rp {total_iuran_karyawan:,.0f}",
+            f"Rp {biaya_jabatan:,.0f}",
+            f"Rp {penghasilan_neto:,.0f}"
+        ])
+    
+    # Header tabel
+    headers = [
+        "Nama Karyawan",
+        "Gaji Pokok",
+        "Tunj. Tetap",
+        "Tunj. Tidak Tetap",
+        "Bruto",
+        "BPJS",
+        "Biaya Jabatan",
+        "Neto"
+    ]
+    
+    # Tampilkan tabel
+    if data_tabel:
+        print(tabulate(data_tabel, headers=headers, tablefmt="grid", stralign="left", numalign="right"))
+        
+        # Tampilkan total
+        print(f"\n{'='*50}")
+        print(f"TOTAL BRUTO     : Rp {total_bruto:,}")
+        print(f"TOTAL IURAN BPJS: Rp {total_iuran:,}")
+        print(f"TOTAL NETO      : Rp {total_neto:,}")
+        print(f"{'='*50}")
+    else:
+        print(f"Belum ada data gaji untuk bulan {nama_bulan}")
+    
+    # Tampilkan perhitungan PPh 21 jika ada
+    print(f"\n{'-'*100}")
+    print(f"PERHITUNGAN PPH 21 BULAN {nama_bulan.upper()}")
+    print(f"{'-'*100}")
+    
+    # Load data perhitungan
+    perhitungan_data = load_perhitungan_data()
+    
+    # Filter perhitungan untuk perusahaan dan bulan ini
+    perhitungan_bulan = [
+        p for p in perhitungan_data 
+        if p.get('kode_pt') == karyawan_data[list(karyawan_data.keys())[0]]['kode_pt'] 
+        and p.get('bulan') == bulan
+        and p.get('jenis') != 'tahunan'
+    ]
+    
+    if perhitungan_bulan:
+        # Siapkan data tabel perhitungan
+        data_perhitungan = []
+        total_pph21 = 0
+        
+        for p in perhitungan_bulan:
+            data_perhitungan.append([
+            p.get('nama_karyawan', '')[:20],
+            p.get('metode', ''),
+            f"Rp {p.get('penghasilan_bruto', 0):,.0f}",
+            f"Rp {p.get('penghasilan_neto', 0):,.0f}",
+            f"Rp {p.get('pph21_bulanan', 0):,.0f}"  # Format with 0 decimals
+    ])
+        total_pph21 += p.get('pph21_bulanan', 0)
+
+
+        # Header tabel perhitungan
+        headers_perhitungan = [
+            "Nama Karyawan",
+            "Metode",
+            "Bruto", 
+            "Neto",
+            "PPh 21"
+        ]
+        
+        print(tabulate(data_perhitungan, headers=headers_perhitungan, tablefmt="grid", stralign="left", numalign="right"))
+        print(f"\nTOTAL PPh 21 BULAN {nama_bulan.upper()}: Rp {total_pph21:,}")
+    else:
+        print(f"Belum ada perhitungan PPh 21 untuk bulan {nama_bulan}")
+
+# Fungsi untuk melihat riwayat perhitungan
+def lihat_riwayat_perhitungan():
+    clear_screen()
+    print("=== RIWAYAT PERHITUNGAN PPH 21 ===\n")
+    
+    perhitungan_data = load_perhitungan_data()
+    
+    if not perhitungan_data:
+        print("Belum ada riwayat perhitungan.")
+        input("\nTekan Enter untuk kembali ke menu...")
+        return
+    
+    # Tampilkan riwayat terbaru dulu
+    perhitungan_data_sorted = sorted(perhitungan_data, key=lambda x: x['timestamp'], reverse=True)
+    
+    # Siapkan data untuk tabel
+    data_tabel = []
+    for i, p in enumerate(perhitungan_data_sorted[:20], 1):  # Tampilkan 20 terbaru
+        if p.get('jenis') == 'tahunan':
+            data_tabel.append([
+                i,
+                p['timestamp'],
+                p['nama_pt'][:15],
+                p['nama_karyawan'][:15],
+                "TAHUNAN",
+                p['metode'],
+                f"Rp {p.get('pph21_tahunan', 0):,}"
+            ])
+        else:
+            bulan_nama = p.get('nama_bulan', f"Bulan {p.get('bulan', '')}")
+            data_tabel.append([
+                i,
+                p['timestamp'],
+                p['nama_pt'][:15],
+                p['nama_karyawan'][:15],
+                bulan_nama,
+                p['metode'],
+                f"Rp {p.get('pph21_bulanan', 0):,}"
+            ])
+    
+    headers = [
+        "No",
+        "Tanggal/Waktu",
+        "Perusahaan",
+        "Karyawan", 
+        "Periode",
+        "Metode",
+        "PPh 21"
+    ]
+    
+    print(tabulate(data_tabel, headers=headers, tablefmt="grid", stralign="left", numalign="right"))
+    
+    if len(perhitungan_data) > 20:
+        print(f"\n(Menampilkan 20 dari {len(perhitungan_data)} total perhitungan)")
+    
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Fungsi untuk export data ke CSV
+def export_data():
+    clear_screen()
+    print("=== EXPORT DATA ===\n")
+    
+    try:
+        import csv
+        from datetime import datetime
+        
+        print("Pilih jenis export:")
+        print("1. Data Karyawan")
+        print("2. Riwayat Perhitungan PPh 21")
+        print("3. Laporan Gaji Per Perusahaan")
+        
+        pilihan = input_pilihan("Pilih menu (1-3): ", ["1", "2", "3"])
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        if pilihan == "1":
+            # Export data karyawan
+            karyawan_data = load_karyawan_data()
+            if not karyawan_data:
+                print("Tidak ada data karyawan untuk di-export.")
+                input("\nTekan Enter untuk kembali ke menu...")
+                return
+                
+            filename = f"data_karyawan_{timestamp}.csv"
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = ['NIK', 'Nama', 'Perusahaan', 'Status PTKP', 'PTKP', 'Kategori TER']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                perusahaan_data = load_perusahaan_data()
+                for nik, data in karyawan_data.items():
+                    nama_pt = perusahaan_data.get(data['kode_pt'], {}).get('nama', 'Unknown')
+                    writer.writerow({
+                        'NIK': nik,
+                        'Nama': data['nama'],
+                        'Perusahaan': nama_pt,
+                        'Status PTKP': data['status_ptkp'],
+                        'PTKP': data['nilai_ptkp'],
+                        'Kategori TER': data['kategori_ter']
+                    })
+            
+            print(f"Data karyawan berhasil di-export ke: {filename}")
+            
+        elif pilihan == "2":
+            # Export riwayat perhitungan
+            perhitungan_data = load_perhitungan_data()
+            if not perhitungan_data:
+                print("Tidak ada riwayat perhitungan untuk di-export.")
+                input("\nTekan Enter untuk kembali ke menu...")
+                return
+                
+            filename = f"riwayat_perhitungan_{timestamp}.csv"
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = ['Timestamp', 'Perusahaan', 'NIK', 'Nama Karyawan', 'Periode', 'Metode', 
+                            'Penghasilan Bruto', 'Total Iuran', 'Penghasilan Neto', 'PPh 21']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for p in perhitungan_data:
+                    if p.get('jenis') == 'tahunan':
+                        periode = "TAHUNAN"
+                        pph21 = p.get('pph21_tahunan', 0)
+                        bruto = p.get('total_penghasilan_bruto', 0)
+                        iuran = p.get('total_iuran', 0)
+                        neto = p.get('penghasilan_neto_tahunan', 0)
+                    else:
+                        periode = p.get('nama_bulan', f"Bulan {p.get('bulan', '')}")
+                        pph21 = p.get('pph21_bulanan', 0)
+                        bruto = p.get('penghasilan_bruto', 0)
+                        iuran = p.get('total_iuran', 0)
+                        neto = p.get('penghasilan_neto', 0)
+                    
+                    writer.writerow({
+                        'Timestamp': p['timestamp'],
+                        'Perusahaan': p['nama_pt'],
+                        'NIK': p['nik'],
+                        'Nama Karyawan': p['nama_karyawan'],
+                        'Periode': periode,
+                        'Metode': p['metode'],
+                        'Penghasilan Bruto': bruto,
+                        'Total Iuran': iuran,
+                        'Penghasilan Neto': neto,
+                        'PPh 21': pph21
+                    })
+            
+            print(f"Riwayat perhitungan berhasil di-export ke: {filename}")
+            
+        elif pilihan == "3":
+            # Export laporan gaji per perusahaan
+            print("\nPilih perusahaan:")
+            kode_pt = pilih_perusahaan()
+            if not kode_pt:
+                return
+                
+            perusahaan_data = load_perusahaan_data()
+            nama_pt = perusahaan_data[kode_pt]['nama']
+            karyawan_data = get_karyawan_by_pt(kode_pt)
+            
+            if not karyawan_data:
+                print(f"Belum ada karyawan untuk perusahaan {nama_pt}.")
+                input("\nTekan Enter untuk kembali ke menu...")
+                return
+            
+            filename = f"laporan_gaji_{nama_pt.replace(' ', '_')}_{timestamp}.csv"
+            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+                fieldnames = ['NIK', 'Nama', 'Bulan', 'Gaji Pokok', 'Tunjangan Tetap', 
+                            'Tunjangan Tidak Tetap', 'Penghasilan Bruto', 'Total Iuran BPJS', 
+                            'Biaya Jabatan', 'Penghasilan Neto']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+                
+                for nik, karyawan in karyawan_data.items():
+                    for bulan in range(1, 13):
+                        bulan_str = str(bulan)
+                        gaji_pokok = karyawan['gaji_bulanan'].get(bulan_str, 0)
+                        tunjangan_tetap = karyawan['tunjangan_tetap_bulanan'].get(bulan_str, 0)
+                        tunjangan_tidak_tetap = karyawan['tunjangan_tidak_tetap_bulanan'].get(bulan_str, 0)
+                        
+                        if gaji_pokok > 0 or tunjangan_tetap > 0 or tunjangan_tidak_tetap > 0:
+                            # Ambil iuran BPJS
+                            iuran_jht = karyawan['iuran_jht_bulanan'].get(bulan_str, 0)
+                            iuran_jp = karyawan['iuran_jp_bulanan'].get(bulan_str, 0)
+                            iuran_jkk = karyawan['iuran_jkk_bulanan'].get(bulan_str, 0)
+                            iuran_jkm = karyawan['iuran_jkm_bulanan'].get(bulan_str, 0)
+                            iuran_jkp = karyawan['iuran_jkp_bulanan'].get(bulan_str, 0)
+                            
+                            penghasilan_bruto = gaji_pokok + tunjangan_tetap + tunjangan_tidak_tetap
+                            total_iuran = iuran_jht + iuran_jp + iuran_jkk + iuran_jkm + iuran_jkp
+                            biaya_jabatan = min(penghasilan_bruto * 0.05, 500000)
+                            penghasilan_neto = penghasilan_bruto - total_iuran - biaya_jabatan
+                            
+                            writer.writerow({
+                                'NIK': nik,
+                                'Nama': karyawan['nama'],
+                                'Bulan': NAMA_BULAN_LENGKAP[bulan],
+                                'Gaji Pokok': gaji_pokok,
+                                'Tunjangan Tetap': tunjangan_tetap,
+                                'Tunjangan Tidak Tetap': tunjangan_tidak_tetap,
+                                'Penghasilan Bruto': penghasilan_bruto,
+                                'Total Iuran BPJS': total_iuran,
+                                'Biaya Jabatan': biaya_jabatan,
+                                'Penghasilan Neto': penghasilan_neto
+                            })
+            
+            print(f"Laporan gaji {nama_pt} berhasil di-export ke: {filename}")
+        
+    except ImportError:
+        print("Module csv tidak tersedia. Export tidak dapat dilakukan.")
+    except Exception as e:
+        print(f"Error saat export: {e}")
+    
+    input("\nTekan Enter untuk kembali ke menu...")
+
+# Main menu
+def main_menu():
+    while True:
+        clear_screen()
+        print("=" * 60)
+        print("           SISTEM PERHITUNGAN PPH 21")
+        print("=" * 60)
+        print("1.  Kelola Perusahaan")
+        print("2.  Kelola Karyawan")
+        print("3.  Input Pemasukan Bulanan")
+        print("4.  Hitung PPh 21 Bulanan")
+        print("5.  Hitung PPh 21 Tahunan")
+        print("6.  Lihat Laporan Perusahaan")
+        print("7.  Lihat Riwayat Perhitungan")
+        print("8.  Export Data")
+        print("9.  Keluar")
+        print("=" * 60)
+        
+        pilihan = input("Pilih menu (1-9): ")
+        
+        if pilihan == "1":
+            tambah_perusahaan()
+        elif pilihan == "2":
+            tambah_karyawan()
+        elif pilihan == "3":
+            input_pemasukan()
+        elif pilihan == "4":
+            hitung_pph21_bulanan()
+        elif pilihan == "5":
+            hitung_pph21_tahunan()
+        elif pilihan == "6":
+            lihat_laporan_perusahaan()
+        elif pilihan == "7":
+            lihat_riwayat_perhitungan()
+        elif pilihan == "8":
+            export_data()
+        elif pilihan == "9":
+            print("\nTerima kasih telah menggunakan Sistem Perhitungan PPh 21!")
+            break
+        else:
+            print("Pilihan tidak valid. Silakan coba lagi.")
+            input("\nTekan Enter untuk melanjutkan...")
+
+# Jalankan program
+if __name__ == "__main__":
+    # Inisialisasi file data jika belum ada
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    
+    # Buat file kosong jika belum ada
+    for filename in [PERUSAHAAN_FILE, KARYAWAN_FILE, PERHITUNGAN_FILE]:
+        if not os.path.exists(filename):
+            with open(filename, 'w') as f:
+                json.dump([], f)
+    
+    main_menu()
